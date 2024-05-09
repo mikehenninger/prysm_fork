@@ -7,7 +7,9 @@ from .surfaces import STYPE_REFLECT, STYPE_REFRACT
 import numpy as np  # always numpy, matplotlib only understands numpy
 
 
-def plot_rays(phist, lw=1, ls='-', c='r', alpha=1, zorder=4, x='z', y='y', fig=None, ax=None):
+def plot_rays(
+    phist, lw=1, ls="-", c="r", alpha=1, zorder=4, x="z", y="y", fig=None, ax=None
+):
     """Plot rays in 2D.
 
     Parameters
@@ -49,9 +51,9 @@ def plot_rays(phist, lw=1, ls='-', c='r', alpha=1, zorder=4, x='z', y='y', fig=N
     ys = ph[..., 1]
     zs = ph[..., 2]
     sieve = {
-        'x': xs,
-        'y': ys,
-        'z': zs,
+        "x": xs,
+        "y": ys,
+        "z": zs,
     }
     x = x.lower()
     y = y.lower()
@@ -64,31 +66,31 @@ def plot_rays(phist, lw=1, ls='-', c='r', alpha=1, zorder=4, x='z', y='y', fig=N
 def _gather_inputs_for_surface_sag(surf, phist, j, points, y):
     if surf.bounding is None:
         # need to look at the raytrace to see bounding limits
-        p = phist[j+1]  # j+1, first element of phist is the start of the raytrace
+        p = phist[j + 1]  # j+1, first element of phist is the start of the raytrace
         xx = p[..., 0]
         yy = p[..., 1]
         mask = []
-        if y == 'y':
+        if y == "y":
             ymin = yy.min()
             ymax = yy.max()
             ypt = np.linspace(ymin, ymax, points)
             ploty = ypt
-            xpt = 0
+            xpt = xx.mean()  # just because Y is the varying one doesn't mean X is zero
         else:
             xmin = xx.min()
             xmax = xx.max()
             xpt = np.linspace(xmin, xmax, points)
             ploty = xpt
-            ypt = 0
+            ypt = yy.mean()  # just because X is the varying one doesn't mean Y is zero
     else:
         bound = surf.bounding
-        mx = bound['outer_radius']
+        mx = bound["outer_radius"]
         r = np.linspace(-mx, mx, points)
-        mn = bound.get('inner_radius', 0)
+        mn = bound.get("inner_radius", 0)
         ar = abs(r)
         mask = ar < mn
         ploty = r
-        if y == 'y':
+        if y == "y":
             ypt = r
             xpt = 0
         else:
@@ -98,9 +100,21 @@ def _gather_inputs_for_surface_sag(surf, phist, j, points, y):
     return xpt, ypt, mask, ploty
 
 
-def plot_optics(prescription, phist, mirror_backing=None, points=100,
-                lw=1, ls='-', c='k', alpha=1, zorder=3,
-                x='z', y='y', fig=None, ax=None):
+def plot_optics(
+    prescription,
+    phist,
+    mirror_backing=None,
+    points=100,
+    lw=1,
+    ls="-",
+    c="k",
+    alpha=1,
+    zorder=3,
+    x="z",
+    y="y",
+    fig=None,
+    ax=None,
+):
     """Draw the optics of a prescription.
 
     Parameters
@@ -143,6 +157,7 @@ def plot_optics(prescription, phist, mirror_backing=None, points=100,
     """
     x = x.lower()
     y = y.lower()
+
     fig, ax = share_fig_ax(fig, ax)
 
     # manual iteration due to how lenses are drawn, start from -1 so the
@@ -156,18 +171,25 @@ def plot_optics(prescription, phist, mirror_backing=None, points=100,
         surf = prescription[j]
         if surf.typ == STYPE_REFLECT:
             z = surf.P[2]
-            xpt, ypt, mask, ploty = _gather_inputs_for_surface_sag(surf, phist, j, points, y)
-            sag = surf.F(xpt, ypt)
+            xpt, ypt, mask, ploty = _gather_inputs_for_surface_sag(
+                surf, phist, j, points, y
+            )
+            # XXX this breaks for x != "z"; remove the ability to use non-"z"?
+            sag = surf.FFp(xpt - surf.P[0], ypt - surf.P[1])[0]
             sag += z
             sag[mask] = np.nan
             # TODO: mirror backing
             ax.plot(sag, ploty, c=c, lw=lw, ls=ls, alpha=alpha, zorder=zorder)
         elif surf.typ == STYPE_REFRACT:
             if (j + 1) == jj:
-                raise ValueError('cant draw a prescription that terminates on a refracting surface')
+                raise ValueError(
+                    "cant draw a prescription that terminates on a refracting surface"
+                )
 
             z = surf.P[2]
-            xpt, ypt, mask, ploty = _gather_inputs_for_surface_sag(surf, phist, j, points, y)
+            xpt, ypt, mask, ploty = _gather_inputs_for_surface_sag(
+                surf, phist, j, points, y
+            )
             sag = surf.F(xpt, ypt)
             sag += z
             sag[mask] = np.nan
@@ -176,7 +198,9 @@ def plot_optics(prescription, phist, mirror_backing=None, points=100,
             j += 1
             surf = prescription[j]
             z = surf.P[2]
-            xpt2, ypt2, mask2, ploty2 = _gather_inputs_for_surface_sag(surf, phist, j, points, y)
+            xpt2, ypt2, mask2, ploty2 = _gather_inputs_for_surface_sag(
+                surf, phist, j, points, y
+            )
             sag2 = surf.F(xpt2, ypt2)
             sag2 += z
             sag2[mask2] = np.nan
@@ -194,7 +218,9 @@ def plot_optics(prescription, phist, mirror_backing=None, points=100,
     return fig, ax
 
 
-def plot_transverse_ray_aberration(phist, lw=1, ls='-', c='r', alpha=1, zorder=4, axis='y', fig=None, ax=None):
+def plot_transverse_ray_aberration(
+    phist, lw=1, ls="-", c="r", alpha=1, zorder=4, axis="y", fig=None, ax=None
+):
     """Plot the transverse ray aberration for a single ray fan.
 
     Parameters
@@ -231,8 +257,8 @@ def plot_transverse_ray_aberration(phist, lw=1, ls='-', c='r', alpha=1, zorder=4
 
     ph = np.asarray(phist)
     sieve = {
-        'x': 0,
-        'y': 1,
+        "x": 0,
+        "y": 1,
     }
     axis = axis.lower()
     axis = sieve[axis]
@@ -242,7 +268,9 @@ def plot_transverse_ray_aberration(phist, lw=1, ls='-', c='r', alpha=1, zorder=4
     return fig, ax
 
 
-def plot_wave_aberration(phist, lw=1, ls='-', c='r', alpha=1, zorder=4, axis='y', fig=None, ax=None):
+def plot_wave_aberration(
+    phist, lw=1, ls="-", c="r", alpha=1, zorder=4, axis="y", fig=None, ax=None
+):
     """Plot the transverse ray aberration for a single ray fan.
 
     Parameters
@@ -278,8 +306,8 @@ def plot_wave_aberration(phist, lw=1, ls='-', c='r', alpha=1, zorder=4, axis='y'
     fig, ax = share_fig_ax(fig, ax)
 
     sieve = {
-        'x': 0,
-        'y': 1,
+        "x": 0,
+        "y": 1,
     }
     axis = axis.lower()
     axis = sieve[axis]
@@ -289,7 +317,9 @@ def plot_wave_aberration(phist, lw=1, ls='-', c='r', alpha=1, zorder=4, axis='y'
     return fig, ax
 
 
-def plot_spot_diagram(phist, marker='+', c='k', alpha=1, zorder=4, s=None, fig=None, ax=None):
+def plot_spot_diagram(
+    phist, marker="+", c="k", alpha=1, zorder=4, s=None, fig=None, ax=None
+):
     """Plot a spot diagram from a ray trace.
 
     Parameters
